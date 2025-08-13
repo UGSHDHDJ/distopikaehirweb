@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Distopik Şehir Simülasyonu 🧟🥔</title>
+<style>
+  body { background: #111; color: white; font-family: Arial; text-align: center; }
+  #game { display: grid; grid-template-columns: repeat(30, 15px); grid-gap: 2px; margin: 20px auto; }
+  .cell { width: 15px; height: 15px; background: #444; cursor: pointer; transition: background-color 0.3s; }
+  .building { /* Renkler JS ile atanacak */ }
+  .zombie { background: green; }
+  .potato { background: brown; }
+  #controls { margin: 10px; }
+  button { margin: 0 5px; padding: 5px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>🏙 Distopik Şehir Simülasyonu 🧟🥔</h1>
+<p>Hücreye tıkla: Zombi veya patates varsa temizle, yoksa bina inşa et!</p>
+
+<div id="controls">
+  <button onclick="selectBuilding('house')">Ev (2 kaynak)</button>
+  <button onclick="selectBuilding('factory')">Fabrika (5 kaynak)</button>
+  <button onclick="selectBuilding('turret')">Savunma Kulesi (7 kaynak)</button>
+</div>
+
+<p id="resources">Kaynak: 10</p>
+<p id="score">Puan: 0</p>
+<p id="status">Durum: Şehir kuruluyor...</p>
+<div id="game"></div>
+
+<script>
+const size = 30;
+const game = document.getElementById('game');
+const statusText = document.getElementById('status');
+const scoreText = document.getElementById('score');
+const resourcesText = document.getElementById('resources');
+
+let cells = [];
+let score = 0;
+let resources = 10;
+
+const buildingTypes = {
+  house: { cost: 2, durability: 3, color: '#888' },
+  factory: { cost: 5, durability: 5, color: '#aa8800' },
+  turret: { cost: 7, durability: 4, color: '#005500' }
+};
+
+let selectedBuilding = 'house';
+
+function selectBuilding(type) {
+  selectedBuilding = type;
+  statusText.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} seçildi.`;
+}
+
+function updateScore() {
+  scoreText.textContent = "Puan: " + score;
+}
+function updateResources() {
+  resourcesText.textContent = "Kaynak: " + resources;
+}
+
+for (let i = 0; i < size * size; i++) {
+  let cell = document.createElement('div');
+  cell.classList.add('cell');
+  
+  cell.addEventListener('click', () => {
+  if(cell.classList.contains('politician')) {
+    statusText.textContent = "Dikkatli ol o bir milletvekili!";
+    politicianClick(cell);
+    return; // Burada işlemi bitir
+  }
+  
+  if (cell.classList.contains('zombie') || cell.classList.contains('potato')) {
+    if (cell.classList.contains('zombie')){
+      cell.classList.remove('zombie');
+      statusText.textContent = "Şehir büyük bir dertten kurtuldu ama insanlar hala geçim sıkıntısı yaşıyor. Milletvekilleri zombilerden daha tehlikeli!";
+      score += 5;
+      updateScore();
+    }
+    if (cell.classList.contains('potato')){
+      cell.classList.remove('potato');
+      statusText.textContent = "Millet vekilleri bu patatesi çok sevdi, Şehir sakinleri hala aç.";
+      score += 3;
+      resources += 2;
+      updateScore();
+      updateResources();
+    }
+  } else if (!cell.classList.contains('building') && !cell.classList.contains('politician')) {
+    let building = buildingTypes[selectedBuilding];
+    if(resources >= building.cost){
+      resources -= building.cost;
+      cell.classList.add('building');
+      cell.dataset.buildingType = selectedBuilding;
+      cell.dataset.durability = building.durability;
+      cell.style.backgroundColor = building.color;
+      statusText.textContent = `🏗 Yeni ${selectedBuilding} inşa edildi!`;
+      score += 1;
+      updateScore();
+      updateResources();
+    } else {
+      statusText.textContent = "Yeterli kaynak yok!";
+    }
+  } else {
+    statusText.textContent = "Bu hücrede zaten bina veya milletvekili var!";
+  }
+});
+
+  
+  game.appendChild(cell);
+  cells.push(cell);
+}
+
+// Rastgele olaylar
+function randomEvent() {
+  let eventType = Math.floor(Math.random() * 3);
+  let randomCell = cells[Math.floor(Math.random() * cells.length)];
+  
+  if(cells.every(c => c.classList.contains('building'))){
+    for (let i = 0; i < 10; i++){
+      randomCell = cells[Math.floor(Math.random() * cells.length)];
+      randomCell.classList.remove('building');
+      randomCell.style.backgroundColor = '#444';
+      delete randomCell.dataset.buildingType;
+      delete randomCell.dataset.durability;
+      statusText.textContent = "Şehir sakinleri panikte!";
+      if (score >= 10){
+        score -= 10;
+        updateScore();
+        statusText.textContent = "Her yeri niye bina yapıyon?";
+      } else {
+        score = 0;
+        updateScore();
+        statusText.textContent = "Bunu nası becerdin mk!";
+      }
+    }
+  }
+  
+  if (!randomCell.classList.contains('building')) {
+    randomCell.classList.remove('zombie', 'potato');
+    if (eventType === 0) {
+      randomCell.classList.add('zombie');
+      statusText.textContent = "💀 Zombiler şehre girdi!";
+    } else if (eventType === 1) {
+      randomCell.classList.add('potato');
+      statusText.textContent = "🥔 Dev bir patates düştü!";
+    } else {
+      statusText.textContent = "Şehir sessiz... şimdilik.";
+    }
+  }
+}
+
+// Zombilerin yayılması ve bina dayanıklılığı
+function spreadZombies() {
+  const zombieCells = cells.filter(c => c.classList.contains('zombie'));
+  
+  zombieCells.forEach(zombieCell => {
+    const index = cells.indexOf(zombieCell);
+    const neighbors = [];
+    if (index % size !== 0) neighbors.push(index - 1);
+    if (index % size !== size - 1) neighbors.push(index + 1);
+    if (index - size >= 0) neighbors.push(index - size);
+    if (index + size < cells.length) neighbors.push(index + size);
+    
+    neighbors.sort(() => Math.random() - 0.2);
+    const spreadCount = Math.min(2, neighbors.length);
+    const spreadChance = 0.6;
+    
+    for(let i = 0; i < spreadCount; i++) {
+      if (Math.random() < spreadChance) {
+        const nIdx = neighbors[i];
+        const neighborCell = cells[nIdx];
+        if (!neighborCell.classList.contains('zombie')) {
+          if (neighborCell.classList.contains('building')) {
+            let durability = parseInt(neighborCell.dataset.durability);
+            durability--;
+            if (durability <= 0) {
+              neighborCell.classList.remove('building');
+              neighborCell.classList.add('zombie');
+              neighborCell.style.backgroundColor = '';
+              delete neighborCell.dataset.buildingType;
+              delete neighborCell.dataset.durability;
+              statusText.textContent = "Bir bina zombiler tarafından yıkıldı!";
+            } else {
+              neighborCell.dataset.durability = durability;
+              let maxDurability = buildingTypes[neighborCell.dataset.buildingType].durability;
+              let colorIntensity = Math.floor(136 * (durability / maxDurability));
+              neighborCell.style.backgroundColor = `rgb(${colorIntensity},${colorIntensity},${colorIntensity})`;
+            }
+          } else if (!neighborCell.classList.contains('potato')) {
+            neighborCell.classList.add('zombie');
+          }
+        }
+      }
+    }
+  });
+}
+
+// Savunma kuleleri zombileri temizler
+function turretAttack() {
+  const turrets = cells.filter(c => c.dataset.buildingType === 'turret');
+  turrets.forEach(turret => {
+    const index = cells.indexOf(turret);
+    const neighbors = [];
+    if (index % size !== 0) neighbors.push(index - 1);
+    if (index % size !== size - 1) neighbors.push(index + 1);
+    if (index - size >= 0) neighbors.push(index - size);
+    if (index + size < cells.length) neighbors.push(index + size);
+
+    neighbors.forEach(nIdx => {
+      const neighborCell = cells[nIdx];
+      if (neighborCell.classList.contains('zombie')) {
+        neighborCell.classList.remove('zombie');
+        statusText.textContent = "Savunma kulesi zombiyi imha etti!";
+        score += 3;
+        updateScore();
+      }
+    });
+  });
+}
+
+// Fabrikalar kaynak üretir
+function factoryProduce() {
+  const factories = cells.filter(c => c.dataset.buildingType === 'factory');
+  factories.forEach(() => {
+    resources += 2;
+    updateResources();
+    statusText.textContent = "Fabrikalar kaynak üretti!";
+  });
+}
+
+const evVergisi = 1;    // Ev başına +1 kaynak
+const zombiVergisi = 2; // Zombi başına -2 kaynak
+
+function collectTax() {
+  const evCount = cells.filter(c => c.dataset.buildingType === 'house').length;
+  const zombieCount = cells.filter(c => c.classList.contains('zombie')).length;
+  
+  const netTax = (evCount * evVergisi) - (zombieCount * zombiVergisi);
+  
+  resources += netTax;
+  if(resources < 0) resources = 0; // Kaynak negatif olmasın
+  
+  updateResources();
+  if (!(resources==0)){
+    if(netTax >= 0){
+      statusText.textContent = `Vergi toplandı: +${netTax} kaynak (Evler: ${evCount}, Zombiler: ${zombieCount})`;
+    } else {
+      statusText.textContent = `Vergi borcu: ${netTax} kaynak! (Evler: ${evCount}, Zombiler: ${zombieCount})`;
+    }
+  } else{
+    statusText.textContent = "Zombiler vergilerini alamadıkları için sinirlendi!";
+  }
+}
+
+function spawnPolitician() {
+  if (Math.random() < 0.005) { // %5 ihtimal
+    let emptyCells = cells.filter(c => !c.classList.contains('building') && !c.classList.contains('zombie') && !c.classList.contains('potato') && !c.classList.contains('politician'));
+    if (emptyCells.length === 0) return;
+    let cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    cell.classList.add('politician');
+    cell.style.backgroundColor = 'purple';
+    cell.dataset.hp = 100;  // 100 can
+    statusText.textContent = "⚠️ Bir milletvekili şehre geldi! Dikkat et!";
+
+    // 120 saniye sonra otomatik sil
+    setTimeout(() => {
+      if(cell.classList.contains('politician')) {
+        cell.classList.remove('politician');
+        cell.style.backgroundColor = '#444';
+        delete cell.dataset.hp;
+        statusText.textContent = "Milletvekili şehirden ayrıldı!";
+      }
+    }, 120000);
+  }
+}
+
+// Milletvekiliye tıklayınca canı azalır, kolay yok edilmez
+function politicianClick(cell) {
+  if (cell.classList.contains('politician')) {
+    let hp = parseInt(cell.dataset.hp);
+    hp--;
+    if (hp <= 0) {
+      cell.classList.remove('politician');
+      cell.style.backgroundColor = '#444';
+      delete cell.dataset.hp;
+      statusText.textContent = "Milletvekili etkisiz hale getirildi!";
+      score += 20;
+      updateScore();
+    } else {
+      cell.dataset.hp = hp;
+      statusText.textContent = `Milletvekiliye zarar verildi! Can: ${hp}`;
+    }
+  }
+}
+
+function politicianEffect() {
+  const politicians = cells.filter(c => c.classList.contains('politician'));
+  politicians.forEach(p => {
+    // Vergi kesintisi
+    resources -= 250;
+    if (resources < 0) resources = 0;
+    updateResources();
+
+    // Çevresini temizle (8 komşu)
+    const index = cells.indexOf(p);
+    const neighbors = [];
+    const dirs = [-size - 1, -size, -size + 1, -1, +1, size - 1, size, size + 1];
+    dirs.forEach(d => {
+      let ni = index + d;
+      if (ni >= 0 && ni < cells.length) {
+        neighbors.push(cells[ni]);
+      }
+    });
+
+    neighbors.forEach(nCell => {
+      if (nCell.classList.contains('building') || nCell.classList.contains('zombie') || nCell.classList.contains('potato')) {
+        nCell.classList.remove('building', 'zombie', 'potato');
+        nCell.style.backgroundColor = '#444';
+        delete nCell.dataset.buildingType;
+        delete nCell.dataset.durability;
+      }
+    });
+
+    statusText.textContent = "⚠️ Milletvekili heryerden vergi almaya devam ediyor!!";
+  });
+}
+
+
+
+// Zamanlayıcılar
+setInterval(spreadZombies, 6000);
+setInterval(randomEvent, 2500);
+setInterval(turretAttack, 3000);
+setInterval(factoryProduce, 10000);
+setInterval(collectTax, 20000); // Her 10 saniyede bir vergi topla
+setInterval(spawnPolitician, 5000);
+setInterval(politicianEffect, 1000);
+
+
+
+// Başlangıç değerlerini güncelle
+updateResources();
+updateScore();
+
+</script>
+</body>
+</html>
