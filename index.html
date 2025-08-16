@@ -4,8 +4,31 @@
 <meta charset="UTF-8" />
 <title>Distopik Şehir Simülasyonu 🧟🥔</title>
 <style>
-  body { background: #111; color: white; font-family: Arial; text-align: center; }
-  #game { display: grid; grid-template-columns: repeat(30, 15px); grid-gap: 2px; margin: 20px auto; }
+ body {
+    background: #111;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+
+#game {
+    display: grid;
+    grid-template-columns: repeat(50, 15px);
+    grid-gap: 2px;
+    margin: 20px auto; /* ortalar */
+}
+
+  #game-container {
+    display: flex;
+    justify-content: center; /* yatay ortala */
+    align-items: center;     /* dikey ortala istersen */
+    width: 100%;             /* ekranın tamamını kapla */
+    min-height: 100vh;       /* dikey olarak ortalamak için */
+    box-sizing: border-box;
+}
+
+
+
   .cell { width: 15px; height: 15px; background: #444; cursor: pointer; transition: background-color 0.3s; }
   .building { /* Renkler JS ile atanacak */ }
   .zombie { background: green; }
@@ -27,7 +50,9 @@
 <p id="resources">Kaynak: 10</p>
 <p id="score">Puan: 0</p>
 <p id="status">Durum: Şehir kuruluyor...</p>
-<div id="game"></div>
+<div id="game-container">
+  <div id="game"></div>
+</div>
 
 <script>
 const size = 30;
